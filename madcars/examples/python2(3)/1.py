@@ -1,10 +1,26 @@
 import json
-import random
+import os
 import datetime
 import numpy as np
 import pickle
 from pathlib import Path
 from sklearn.neural_network import MLPRegressor
+agentPath=''
+
+filename='agent.p'
+def find_net(directory):
+    global agentPath
+    for root, dirs, files in os.walk(directory):
+        for name in files:
+            if name == filename:
+                agentPath = Path(os.path.abspath(os.path.join(root, name)))
+                return
+        for d in dirs:
+            if not agentPath:
+                find_net(d)
+
+
+find_net(r'/home/')
 
 numpy_2d_arrays = [0]*9
 ticknum,ticksum=0,0
@@ -18,14 +34,13 @@ lives,previouslives=0,0
 prevCoords = ()
 isTrained = False
 commands = ('left', 'right', 'stop')
-agentPath = Path("agent.p")
 if agentPath.is_file():
     F = open(agentPath, "rb")
     agent = pickle.load(F)
     F.close()
 else:
     exit(0)
-    agent = MLPRegressor(hidden_layer_sizes=(200, 200), max_iter=1, warm_start=True, activation='tanh', solver='sgd')
+    agent = MLPRegressor(hidden_layer_sizes=(256, 256), max_iter=1, warm_start=True, activation='tanh', solver='sgd')
     agent.fit(
         np.array([1., 0.,0.,1.,0.,0.,0.,0.,0.,300.,300.,329.,295.,0.,422.,295.,0.,0.,1.,900.,300.,871.,295.,0.,778.,295.,0.,0.,-1.,10.] + [0] * 14 + [0] + [0,1,0]).reshape(1, -1),
         np.array([0]).reshape(1, -1))
@@ -33,10 +48,6 @@ else:
     pickle.dump(agent, F)
     F.close()
 
-FI = open("zz.txt", "a", buffering=1)
-FI.write("\nWorks\n")
-FI.write(str(datetime.datetime.now().time()))
-FI.write("\n")
 while True:
     try:
         z = input()
@@ -56,20 +67,7 @@ while True:
                     rewards.append(-10)
                     loses+=1
                 previouslives=lives
-                if gamecount%20==0:
-                    FI.write("\n25 games passed in:")
-                    FI.write(str(datetime.datetime.now().time()))
-                    FI.write("\nTotal wines:")
-                    FI.write(str(wines))
-                    FI.write("\nTotal loses:")
-                    FI.write(str(loses))
-                    FI.write("\nTotal matches:")
-                    FI.write(str(gamecountscheduler))
-                    FI.write("\n")
-                    FI.write("\nSum of ticks:")
-                    FI.write(str(ticksum))
-                    FI.write("\n")
-                if (not isTrained) and (gamecount == 40):
+                if (not isTrained) and (gamecount == 50):
                     isTrained = True
                     extendedRewards = []
                     for matchI in range(len(rewards)):
@@ -92,7 +90,7 @@ while True:
                             for tick in match:
                                 plainRewards.append(tick)
 
-                    agent.fit(plainStates, plainRewards)
+                    #agent.fit(plainStates, plainRewards)
                     states, rewards,qValues = [], [],[]
                     gamecount = 0
                     wines = 0
@@ -141,21 +139,9 @@ while True:
                  + speeds + [ticknum] + [0,0,1])]
             qValue=np.array([agent.predict(state[0].reshape(1, -1))[0]]+[agent.predict(state[1].reshape(1, -1))[0]]+[agent.predict(state[2].reshape(1, -1))[0]])
             qValueIdx = np.argmax(qValue)
-            choice=np.random.choice([qValueIdx,0,1,2],p=[0.7,0.1,0.1,0.1])
-            states[gamecount].append(state[choice].tolist())
-            qValues[gamecount].append(qValue[choice])
-            if False:
-                cmd = random.choice(commands)
-                print(json.dumps({"command": cmd, 'debug': cmd}))
-            elif True: #gamecountscheduler>20000:
-                print(json.dumps({"command": commands[choice], 'debug': commands[choice]}))
+            states[gamecount].append(state[qValueIdx].tolist())
+            qValues[gamecount].append(qValue[qValueIdx])
+            print(json.dumps({"command": commands[qValueIdx], 'debug': commands[qValueIdx]}))
 
     except EOFError:
-        #F = open(agentPath, "wb")
-        #pickle.dump(agent, F)
-        #F.close()
-        FI.write("\n")
-        FI.write("BAD WOLF")
-        FI.write("\n")
-        FI.close()
         exit(0)

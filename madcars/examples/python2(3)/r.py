@@ -24,19 +24,14 @@ if agentPath.is_file():
     agent = pickle.load(F)
     F.close()
 else:
-    exit(0)
     agent = MLPRegressor(hidden_layer_sizes=(200, 200), max_iter=1, warm_start=True, activation='tanh', solver='sgd')
     agent.fit(
-        np.array([1., 0.,0.,1.,0.,0.,0.,0.,0.,300.,300.,329.,295.,0.,422.,295.,0.,0.,1.,900.,300.,871.,295.,0.,778.,295.,0.,0.,-1.,10.] + [0] * 14 + [0] + [0,1,0]).reshape(1, -1),
+        np.array([1., 0.,0.,1.,0.,0.,0.,0.,0.,300.,300.,329.,295.,0.,422.,295.,0.,0.,1.,900.,300.,871.,295.,0.,778.,295.,0.,0.,-1.,10.] + [0] * 14 + [0] + [1,0,0]).reshape(1, -1),
         np.array([0]).reshape(1, -1))
-    F = open(agentPath, "wb")
-    pickle.dump(agent, F)
-    F.close()
-
-FI = open("zz.txt", "a", buffering=1)
-FI.write("\nWorks\n")
-FI.write(str(datetime.datetime.now().time()))
-FI.write("\n")
+#FI = open("zz.txt", "a", buffering=1)
+#FI.write("\nWorks\n")
+#FI.write(str(datetime.datetime.now().time()))
+##.write("\n")
 while True:
     try:
         z = input()
@@ -56,20 +51,20 @@ while True:
                     rewards.append(-10)
                     loses+=1
                 previouslives=lives
-                if gamecount%20==0:
-                    FI.write("\n25 games passed in:")
-                    FI.write(str(datetime.datetime.now().time()))
-                    FI.write("\nTotal wines:")
-                    FI.write(str(wines))
-                    FI.write("\nTotal loses:")
-                    FI.write(str(loses))
-                    FI.write("\nTotal matches:")
-                    FI.write(str(gamecountscheduler))
-                    FI.write("\n")
-                    FI.write("\nSum of ticks:")
-                    FI.write(str(ticksum))
-                    FI.write("\n")
-                if (not isTrained) and (gamecount == 40):
+                #if gamecount%25==0:
+                #    FI.write("\n25 games passed in:")
+                #    FI.write(str(datetime.datetime.now().time()))
+                #    FI.write("\nTotal wines:")
+                #    FI.write(str(wines))
+                #    FI.write("\nTotal loses:")
+                #    FI.write(str(loses))
+                #    FI.write("\nTotal matches:")
+                #    FI.write(str(gamecountscheduler))
+                #    FI.write("\n")
+                #    FI.write("\nSum of ticks:")
+                #    FI.write(str(ticksum))
+                #    FI.write("\n")
+                if (not isTrained) and (gamecount == 50):
                     isTrained = True
                     extendedRewards = []
                     for matchI in range(len(rewards)):
@@ -92,11 +87,9 @@ while True:
                             for tick in match:
                                 plainRewards.append(tick)
 
-                    agent.fit(plainStates, plainRewards)
+                    #agent.fit(plainStates, plainRewards)
                     states, rewards,qValues = [], [],[]
                     gamecount = 0
-                    wines = 0
-                    loses = 0
             states.append([])
             qValues.append([])
             ticknum,numpy_2d_arrays = 0,[0]*9
@@ -149,13 +142,17 @@ while True:
                 print(json.dumps({"command": cmd, 'debug': cmd}))
             elif True: #gamecountscheduler>20000:
                 print(json.dumps({"command": commands[choice], 'debug': commands[choice]}))
+            else:
+                wines=0
+                loses=0
+                print(json.dumps({"command": cmd, 'debug': cmd}))
 
     except EOFError:
         #F = open(agentPath, "wb")
         #pickle.dump(agent, F)
         #F.close()
-        FI.write("\n")
-        FI.write("BAD WOLF")
-        FI.write("\n")
-        FI.close()
+        ##.write("\n")
+        #FI.write("BAD WOLF")
+        #FI.write("\n")
+        #FI.close()
         exit(0)
