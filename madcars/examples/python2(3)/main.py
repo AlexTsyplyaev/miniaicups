@@ -20,7 +20,7 @@ isTrained = False
 commands = ('left', 'right', 'stop')
 agentPath = Path("agent.p")
 if agentPath.is_file():
-    F = open(agentPath, "rb")
+    F = open(str(agentPath), "rb")
     agent = pickle.load(F)
     F.close()
 else:
@@ -29,7 +29,7 @@ else:
     agent.fit(
         np.array([1., 0.,0.,1.,0.,0.,0.,0.,0.,300.,300.,329.,295.,0.,422.,295.,0.,0.,1.,900.,300.,871.,295.,0.,778.,295.,0.,0.,-1.,10.] + [0] * 14 + [0] + [0,1,0]).reshape(1, -1),
         np.array([0]).reshape(1, -1))
-    F = open(agentPath, "wb")
+    F = open(str(agentPath), "wb")
     pickle.dump(agent, F)
     F.close()
 

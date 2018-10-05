@@ -20,7 +20,7 @@ isTrained = False
 commands = ('left', 'right', 'stop')
 agentPath = Path("agent.p")
 if agentPath.is_file():
-    F = open(agentPath, "rb")
+    F = open(str(agentPath), "rb")
     agent = pickle.load(F)
     F.close()
 else:
