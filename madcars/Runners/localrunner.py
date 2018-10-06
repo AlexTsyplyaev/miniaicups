@@ -1,14 +1,21 @@
+#!/usr/bin/env python3
 from itertools import product
 from asyncio import events
 from mechanic.game import Game
 from mechanic.strategy import KeyboardClient, FileClient
 import numpy as np
+import os
+import sys
 
 maps = ['PillMap','PillHubbleMap', 'PillHillMap', 'PillCarcassMap', 'IslandMap', 'IslandHoleMap']
 cars = ['Buggy', 'Bus', 'SquareWheelsBuggy']
 games = [','.join(t) for t in product(maps, cars)]*5
-fc =FileClient(['python', '..\\examples\\python2(3)\\main.py'], None)
-sc = FileClient(['python', '..\\examples\\python2(3)\\r.py'], None)
+cur_dir = os.path.dirname(os.path.basename(__file__))
+rel_path = '../examples/python2(3)'.split('/')
+python_path = os.path.join(cur_dir, *rel_path)
+python_interpreter = 'python{ver}'.format(ver=sys.version_info.major)
+fc = FileClient([python_interpreter, os.path.join(python_path, 'main.py')], None)
+sc = FileClient([python_interpreter, os.path.join(python_path, 'r.py')], None)
 game = None
 r = np.random.choice(2, p=[0.5, 0.5])
 if r == 1:
@@ -26,4 +33,4 @@ while not game.game_complete:
     future_message = loop.run_until_complete(game.tick())
     game.tick()
 
-print(game.get_winner().id)
+print('Winner:', game.get_winner().id)
