@@ -27,7 +27,7 @@
 **Внимание!** Подробнее про работу с LocalRunner вы можете прочитать в [Правилах](RULES.md) в разделе [3](RULES.md#3-Особенности-запуска-local-runner) .
 
 ## Загрузка решения на сайт
-Для примера возьмем решение, написанное на [Python](https://github.com/MailRuChamps/miniaicups/blob/master/madcars/examples/main.py)
+Для примера возьмем решение, написанное на [Python](https://github.com/MailRuChamps/miniaicups/blob/master/madcars/examples/python2(3)/main.py)
 
 * Скачиваем, переходим на [сайт](https://aicups.ru/profile/);
 * Нажимаем на кнопку `Отправить решение`;
