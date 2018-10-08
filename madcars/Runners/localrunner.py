@@ -11,9 +11,10 @@ maps = ['PillMap','PillHubbleMap', 'PillHillMap', 'PillCarcassMap', 'IslandMap',
 cars = ['Buggy', 'Bus', 'SquareWheelsBuggy']
 games = [','.join(t) for t in product(maps, cars)]*5
 cur_dir = os.path.dirname(os.path.basename(__file__))
-rel_path = '../examples/python2(3)'.split('/')
+rel_path = '../players'.split('/')
 python_path = os.path.join(cur_dir, *rel_path)
-python_interpreter = 'python{ver}'.format(ver=sys.version_info.major)
+python_interpreter = 'python{major}.{minor}'.format(
+    major=sys.version_info.major, minor=sys.version_info.minor)
 fc = FileClient([python_interpreter, os.path.join(python_path, 'main.py')], None)
 sc = FileClient([python_interpreter, os.path.join(python_path, 'r.py')], None)
 game = None
