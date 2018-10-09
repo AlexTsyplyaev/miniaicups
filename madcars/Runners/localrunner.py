@@ -7,14 +7,15 @@ import numpy as np
 import os
 import sys
 
-maps = ['PillMap','PillHubbleMap', 'PillHillMap', 'PillCarcassMap', 'IslandMap', 'IslandHoleMap']
-cars = ['Buggy', 'Bus', 'SquareWheelsBuggy']
-games = [','.join(t) for t in product(maps, cars)]*5
+maps = ['PillMap']#,'PillHubbleMap', 'PillHillMap', 'PillCarcassMap', 'IslandMap', 'IslandHoleMap']
+cars = ['Buggy']#, 'Bus', 'SquareWheelsBuggy']
+games = [','.join(t) for t in product(maps, cars)]*100
 cur_dir = os.path.dirname(os.path.basename(__file__))
-rel_path = '../examples/python2(3)'.split('/')
+rel_path = '../players'.split('/')
 python_path = os.path.join(cur_dir, *rel_path)
-python_interpreter = 'python{ver}'.format(ver=sys.version_info.major)
-fc = FileClient([python_interpreter, os.path.join(python_path, 'main.py')], None)
+python_interpreter = 'python{major}.{minor}'.format(
+    major=sys.version_info.major, minor=sys.version_info.minor)
+fc = FileClient([python_interpreter, os.path.join(python_path, 'pytorch_main.py')], None)
 sc = FileClient([python_interpreter, os.path.join(python_path, 'r.py')], None)
 game = None
 r = np.random.choice(2, p=[0.5, 0.5])

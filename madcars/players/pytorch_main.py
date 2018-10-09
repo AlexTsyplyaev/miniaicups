@@ -4,8 +4,36 @@ import datetime
 import numpy as np
 import pickle
 from pathlib import Path
-from sklearn.neural_network import MLPRegressor
 
+
+# local imports
+from contextlib import contextmanager
+@contextmanager
+def import_from(rel_path):
+    """Add module import relative path to sys.path"""
+    import sys
+    import os
+    cur_dir = os.path.dirname(os.path.abspath(__file__))
+    sys.path.insert(0, os.path.join(cur_dir, rel_path))
+    yield
+    sys.path.pop(0)
+
+with import_from('.'):
+    from networks import Networks
+    from pytorch_agent import Agent
+
+
+def _to_np_array(value):
+    """Convert value to list"""
+    if isinstance(value, list):
+        return np.array(value)
+    if type(value) is np.ndarray:
+        return value
+    return np.array([value])
+
+VERBOSE = False  # used for logging
+
+networks = Networks()
 numpy_2d_arrays = [0]*9
 ticknum,ticksum=0,0
 gamecount=-1
@@ -18,20 +46,24 @@ lives,previouslives=0,0
 prevCoords = ()
 isTrained = False
 commands = ('left', 'right', 'stop')
+
 agentPath = Path("agent.p")
 if agentPath.is_file():
     F = open(str(agentPath), "rb")
     agent = pickle.load(F)
     F.close()
 else:
-    agent = MLPRegressor(hidden_layer_sizes=(200, 200), max_iter=1, warm_start=True, activation='tanh', solver='sgd')
-    agent.fit(
-        np.array([1., 0.,0.,1.,0.,0.,0.,0.,0.,300.,300.,329.,295.,0.,422.,295.,0.,0.,1.,900.,300.,871.,295.,0.,778.,295.,0.,0.,-1.,10.] + [0] * 14 + [0] + [1,0,0]).reshape(1, -1),
-        np.array([0]).reshape(1, -1))
-#FI = open("zz.txt", "a", buffering=1)
-#FI.write("\nWorks\n")
-#FI.write(str(datetime.datetime.now().time()))
-##.write("\n")
+    agent = Agent(networks['test'](48, 1), solver='sgd', loss='mse')
+    F = open(str(agentPath), "wb")
+    pickle.dump(agent, F)
+    F.close()
+
+if VERBOSE:
+    FI = open("zz.txt", "a", buffering=1)
+    FI.write("\nWorks\n")
+    FI.write(str(datetime.datetime.now().time()))
+    FI.write("\n")
+
 while True:
     try:
         z = input()
@@ -51,20 +83,20 @@ while True:
                     rewards.append(-10)
                     loses+=1
                 previouslives=lives
-                #if gamecount%25==0:
-                #    FI.write("\n25 games passed in:")
-                #    FI.write(str(datetime.datetime.now().time()))
-                #    FI.write("\nTotal wines:")
-                #    FI.write(str(wines))
-                #    FI.write("\nTotal loses:")
-                #    FI.write(str(loses))
-                #    FI.write("\nTotal matches:")
-                #    FI.write(str(gamecountscheduler))
-                #    FI.write("\n")
-                #    FI.write("\nSum of ticks:")
-                #    FI.write(str(ticksum))
-                #    FI.write("\n")
-                if (not isTrained) and (gamecount == 50):
+                if VERBOSE and gamecount%20==0:
+                    FI.write("\n25 games passed in:")
+                    FI.write(str(datetime.datetime.now().time()))
+                    FI.write("\nTotal wines:")
+                    FI.write(str(wines))
+                    FI.write("\nTotal loses:")
+                    FI.write(str(loses))
+                    FI.write("\nTotal matches:")
+                    FI.write(str(gamecountscheduler))
+                    FI.write("\n")
+                    FI.write("\nSum of ticks:")
+                    FI.write(str(ticksum))
+                    FI.write("\n")
+                if (not isTrained) and (gamecount == 40):
                     isTrained = True
                     extendedRewards = []
                     for matchI in range(len(rewards)):
@@ -85,17 +117,23 @@ while True:
                         plainRewards = []
                         for match in extendedRewards:
                             for tick in match:
-                                plainRewards.append(tick)
-
-                    #agent.fit(plainStates, plainRewards)
+                                plainRewards.append(_to_np_array(tick))
+                    if VERBOSE:
+                        with open('plain_tick.txt', 'w+') as tick_file:
+                            tick_file.write('plainStates: {val}\n'.format(val=plainStates))
+                            tick_file.write('plainRewards: {val}\n'.format(val=plainRewards))
+                    agent.fit(plainStates, plainRewards)
+                    if VERBOSE:
+                        FI.write("TRAINED\n")
                     states, rewards,qValues = [], [],[]
                     gamecount = 0
+                    wines = 0
+                    loses = 0
             states.append([])
             qValues.append([])
             ticknum,numpy_2d_arrays = 0,[0]*9
             numpy_2d_arrays[dict["params"]["proto_car"]["external_id"] - 1] = 1
             numpy_2d_arrays[dict["params"]["proto_map"]["external_id"] + 2] = 1
-
         elif dict["type"] == "tick":
 
             mycar_data = list(
@@ -142,17 +180,14 @@ while True:
                 print(json.dumps({"command": cmd, 'debug': cmd}))
             elif True: #gamecountscheduler>20000:
                 print(json.dumps({"command": commands[choice], 'debug': commands[choice]}))
-            else:
-                wines=0
-                loses=0
-                print(json.dumps({"command": cmd, 'debug': cmd}))
 
     except EOFError:
-        #F = open(agentPath, "wb")
-        #pickle.dump(agent, F)
-        #F.close()
-        ##.write("\n")
-        #FI.write("BAD WOLF")
-        #FI.write("\n")
-        #FI.close()
+        F = open(agentPath, "wb")
+        pickle.dump(agent, F)
+        F.close()
+        if VERBOSE:
+            FI.write("\n")
+            FI.write("BAD WOLF")
+            FI.write("\n")
+            FI.close()
         exit(0)
