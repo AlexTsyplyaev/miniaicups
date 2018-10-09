@@ -30,10 +30,8 @@ loop = events.new_event_loop()
 events.set_event_loop(loop)
 
 game.tick()
-i = 0
 while not game.game_complete:
     future_message = loop.run_until_complete(game.tick())
     game.tick()
-    i += 1
 
 print('Winner:', game.get_winner().id)
