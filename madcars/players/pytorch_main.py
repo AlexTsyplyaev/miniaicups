@@ -47,10 +47,16 @@ prevCoords = ()
 isTrained = False
 commands = ('left', 'right', 'stop')
 
-agent = Agent(networks['test'](48, 1), solver='sgd', loss='mse')
-agent.fit(
-    [[1., 0.,0.,1.,0.,0.,0.,0.,0.,300.,300.,329.,295.,0.,422.,295.,0.,0.,1.,900.,300.,871.,295.,0.,778.,295.,0.,0.,-1.,10.] + [0] * 14 + [0] + [0,1,0]],
-    [[0]])
+agentPath = Path("agent.p")
+if agentPath.is_file():
+    F = open(str(agentPath), "rb")
+    agent = pickle.load(F)
+    F.close()
+else:
+    agent = Agent(networks['test'](48, 1), solver='sgd', loss='mse')
+    F = open(str(agentPath), "wb")
+    pickle.dump(agent, F)
+    F.close()
 
 if VERBOSE:
     FI = open("zz.txt", "a", buffering=1)
@@ -117,6 +123,8 @@ while True:
                             tick_file.write('plainStates: {val}\n'.format(val=plainStates))
                             tick_file.write('plainRewards: {val}\n'.format(val=plainRewards))
                     agent.fit(plainStates, plainRewards)
+                    if VERBOSE:
+                        FI.write("TRAINED\n")
                     states, rewards,qValues = [], [],[]
                     gamecount = 0
                     wines = 0
@@ -174,9 +182,9 @@ while True:
                 print(json.dumps({"command": commands[choice], 'debug': commands[choice]}))
 
     except EOFError:
-        #F = open(agentPath, "wb")
-        #pickle.dump(agent, F)
-        #F.close()
+        F = open(agentPath, "wb")
+        pickle.dump(agent, F)
+        F.close()
         if VERBOSE:
             FI.write("\n")
             FI.write("BAD WOLF")

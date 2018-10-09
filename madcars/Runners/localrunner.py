@@ -7,9 +7,9 @@ import numpy as np
 import os
 import sys
 
-maps = ['PillMap','PillHubbleMap', 'PillHillMap', 'PillCarcassMap', 'IslandMap', 'IslandHoleMap']
-cars = ['Buggy', 'Bus', 'SquareWheelsBuggy']
-games = [','.join(t) for t in product(maps, cars)]*5
+maps = ['PillMap']#,'PillHubbleMap', 'PillHillMap', 'PillCarcassMap', 'IslandMap', 'IslandHoleMap']
+cars = ['Buggy']#, 'Bus', 'SquareWheelsBuggy']
+games = [','.join(t) for t in product(maps, cars)]*100
 cur_dir = os.path.dirname(os.path.basename(__file__))
 rel_path = '../players'.split('/')
 python_path = os.path.join(cur_dir, *rel_path)
