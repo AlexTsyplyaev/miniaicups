@@ -6,13 +6,11 @@ import torch.nn as nn
 
 def _test_network(in_features, out_features):
     net = nn.Sequential()
-    net.add_module('fc1', nn.Linear(in_features, 27))
-    net.add_module('relu1', nn.ReLU())
-    net.add_module('fc2', nn.Linear(27, 17))
-    net.add_module('relu2', nn.ReLU())
-    net.add_module('fc3', nn.Linear(17, 10))
-    net.add_module('relu3', nn.ReLU())
-    net.add_module('fc4', nn.Linear(10, out_features))
+    net.add_module('fc1', nn.Linear(in_features, 200))
+    net.add_module('tanh1', nn.Tanh())
+    net.add_module('fc2', nn.Linear(200, 200))
+    net.add_module('tanh2', nn.Tanh())
+    net.add_module('fc3', nn.Linear(200, out_features))
     return net
 
 

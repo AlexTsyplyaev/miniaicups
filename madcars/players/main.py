@@ -143,6 +143,17 @@ while True:
             qValueIdx = np.argmax(qValue)
             choice=np.random.choice([qValueIdx,0,1,2],p=[0.7,0.1,0.1,0.1])
             states[gamecount].append(state[choice].tolist())
+            with open('tick.txt', 'w+') as tick_file:
+                qValue2 = []
+                qValue2.append(agent.predict(state[0].reshape(1, -1)))
+                qValue2.append(agent.predict(state[1].reshape(1, -1)))
+                qValue2.append(agent.predict(state[2].reshape(1, -1)))
+                qValue2 = np.array(qValue2)
+                tick_file.write('qValue: {val}\n'.format(val=qValue))
+                tick_file.write('predicted: {val}\n'.format(val=agent.predict(state[0].reshape(1, -1))))
+                tick_file.write('qValue2: {val}\n'.format(val=qValue2))
+                tick_file.write('state: {val}\n'.format(val=state))
+                tick_file.write('states: {val}\n'.format(val=states))
             qValues[gamecount].append(qValue[choice])
             if False:
                 cmd = random.choice(commands)

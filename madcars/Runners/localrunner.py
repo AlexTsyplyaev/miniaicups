@@ -29,9 +29,14 @@ else:
 loop = events.new_event_loop()
 events.set_event_loop(loop)
 
-game.tick()
-while not game.game_complete:
-    future_message = loop.run_until_complete(game.tick())
+with open('runner.log', 'w') as rf:
     game.tick()
+    i = 0
+    while not game.game_complete:
+        rf.write('Tick #{i}\n'.format(i=i+1))
+        rf.seek(0, 0)
+        future_message = loop.run_until_complete(game.tick())
+        game.tick()
+        i += 1
 
 print('Winner:', game.get_winner().id)

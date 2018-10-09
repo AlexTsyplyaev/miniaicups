@@ -22,6 +22,17 @@ with import_from('.'):
     from networks import Networks
     from pytorch_agent import Agent
 
+
+def _to_np_array(value):
+    """Convert value to list"""
+    if isinstance(value, list):
+        return np.array(value)
+    if type(value) is np.ndarray:
+        return value
+    return np.array([value])
+
+VERBOSE = False  # used for logging
+
 networks = Networks()
 numpy_2d_arrays = [0]*9
 ticknum,ticksum=0,0
@@ -36,15 +47,17 @@ prevCoords = ()
 isTrained = False
 commands = ('left', 'right', 'stop')
 
-agent = Agent(networks['test'](1, 1), solver='sgd', loss='mse')
+agent = Agent(networks['test'](48, 1), solver='sgd', loss='mse')
 agent.fit(
-    np.array([1., 0.,0.,1.,0.,0.,0.,0.,0.,300.,300.,329.,295.,0.,422.,295.,0.,0.,1.,900.,300.,871.,295.,0.,778.,295.,0.,0.,-1.,10.] + [0] * 14 + [0] + [0,1,0]).reshape(1, -1),
-    np.array([0]).reshape(1, -1))
+    [[1., 0.,0.,1.,0.,0.,0.,0.,0.,300.,300.,329.,295.,0.,422.,295.,0.,0.,1.,900.,300.,871.,295.,0.,778.,295.,0.,0.,-1.,10.] + [0] * 14 + [0] + [0,1,0]],
+    [[0]])
 
-FI = open("zz.txt", "a", buffering=1)
-FI.write("\nWorks\n")
-FI.write(str(datetime.datetime.now().time()))
-FI.write("\n")
+if VERBOSE:
+    FI = open("zz.txt", "a", buffering=1)
+    FI.write("\nWorks\n")
+    FI.write(str(datetime.datetime.now().time()))
+    FI.write("\n")
+
 while True:
     try:
         z = input()
@@ -64,7 +77,7 @@ while True:
                     rewards.append(-10)
                     loses+=1
                 previouslives=lives
-                if gamecount%20==0:
+                if VERBOSE and gamecount%20==0:
                     FI.write("\n25 games passed in:")
                     FI.write(str(datetime.datetime.now().time()))
                     FI.write("\nTotal wines:")
@@ -98,8 +111,11 @@ while True:
                         plainRewards = []
                         for match in extendedRewards:
                             for tick in match:
-                                plainRewards.append(tick)
-
+                                plainRewards.append(_to_np_array(tick))
+                    if VERBOSE:
+                        with open('plain_tick.txt', 'w+') as tick_file:
+                            tick_file.write('plainStates: {val}\n'.format(val=plainStates))
+                            tick_file.write('plainRewards: {val}\n'.format(val=plainRewards))
                     agent.fit(plainStates, plainRewards)
                     states, rewards,qValues = [], [],[]
                     gamecount = 0
@@ -110,7 +126,6 @@ while True:
             ticknum,numpy_2d_arrays = 0,[0]*9
             numpy_2d_arrays[dict["params"]["proto_car"]["external_id"] - 1] = 1
             numpy_2d_arrays[dict["params"]["proto_map"]["external_id"] + 2] = 1
-
         elif dict["type"] == "tick":
 
             mycar_data = list(
@@ -162,8 +177,9 @@ while True:
         #F = open(agentPath, "wb")
         #pickle.dump(agent, F)
         #F.close()
-        FI.write("\n")
-        FI.write("BAD WOLF")
-        FI.write("\n")
-        FI.close()
+        if VERBOSE:
+            FI.write("\n")
+            FI.write("BAD WOLF")
+            FI.write("\n")
+            FI.close()
         exit(0)
