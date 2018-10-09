@@ -188,9 +188,10 @@ while True:
                 print(json.dumps({"command": commands[choice], 'debug': commands[choice]}))
 
     except EOFError:
-        F = open(agentPath, "wb")
-        pickle.dump(agent, F)
-        F.close()
+        if args.train:
+            F = open(agentPath, "wb")
+            pickle.dump(agent, F)
+            F.close()
         if VERBOSE:
             FI.write("\n")
             FI.write("BAD WOLF")
