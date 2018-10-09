@@ -4,6 +4,7 @@ import datetime
 import numpy as np
 import pickle
 from pathlib import Path
+import argparse
 
 
 # local imports
@@ -30,6 +31,11 @@ def _to_np_array(value):
     if type(value) is np.ndarray:
         return value
     return np.array([value])
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--train', dest='train', action='store_true', default=False)
+args = parser.parse_args()
 
 VERBOSE = False  # used for logging
 
@@ -96,7 +102,7 @@ while True:
                     FI.write("\nSum of ticks:")
                     FI.write(str(ticksum))
                     FI.write("\n")
-                if (not isTrained) and (gamecount == 40):
+                if (not isTrained) and (gamecount == 40) and args.train:
                     isTrained = True
                     extendedRewards = []
                     for matchI in range(len(rewards)):
