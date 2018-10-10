@@ -83,10 +83,10 @@ while True:
                 previouslives=dict["params"]["my_lives"]
             else:
                 if lives==previouslives:
-                    rewards.append(10)
+                    rewards.append(-10)
                     wines+=1
                 else:
-                    rewards.append(-10)
+                    rewards.append(10)
                     loses+=1
                 previouslives=lives
                 if VERBOSE and gamecount%20==0:
@@ -102,7 +102,7 @@ while True:
                     FI.write("\nSum of ticks:")
                     FI.write(str(ticksum))
                     FI.write("\n")
-                if (not isTrained) and (gamecount == 40) and args.train:
+                if (not isTrained) and (gamecount == 50) and args.train:
                     isTrained = True
                     extendedRewards = []
                     for matchI in range(len(rewards)):
@@ -114,7 +114,7 @@ while True:
                             print('len(extendedRewards) != matchI + 1')
                         extendedRewards[-1][matchLength - 1] = rewards[matchI]
                         for tickI in reversed(range(matchLength - 1)): # already made update of the last reward
-                            extendedRewards[matchI][tickI] = gamma * qValues[matchI][tickI + 1] # we have zero rewards on all other iterations
+                            extendedRewards[-1][tickI] = gamma * extendedRewards[-1][tickI + 1] # we have zero rewards on all other iterations
 
                         plainStates = []
                         for match in states:
