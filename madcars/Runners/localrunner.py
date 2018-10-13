@@ -13,12 +13,12 @@ games = [','.join(t) for t in product(maps, cars)]*101
 cur_dir = os.path.dirname(os.path.basename(__file__))
 rel_path = '../players'.split('/')
 python_path = os.path.join(cur_dir, *rel_path)
-python_interpreter = 'python{major}.{minor}'.format(
+python_interpreter = 'python'.format(
     major=sys.version_info.major, minor=sys.version_info.minor)
 fc = FileClient([python_interpreter, '-u', os.path.join(python_path, 'pytorch_main.py'), '--train'], None)
-sc = FileClient([python_interpreter, '-u', os.path.join(python_path, 'pytorch_main.py')], None)
+sc = FileClient([python_interpreter, '-u', os.path.join(python_path, 'r.py')], None)
 game = None
-r = np.random.choice(2, p=[0.5, 0.5])
+r = np.random.choice(2, p=[0.9, 0.1])
 if r == 1:
     print('Usual session')
     game = Game([fc, sc], games, extended_save=False)
