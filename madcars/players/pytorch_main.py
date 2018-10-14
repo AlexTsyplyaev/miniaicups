@@ -125,7 +125,8 @@ while True:
                         with open('plain_tick.txt', 'w+') as tick_file:
                             tick_file.write('plainStates: {val}\n'.format(val=plainStates))
                             tick_file.write('plainRewards: {val}\n'.format(val=plainRewards))
-                    agent.fit(plainStates, plainRewards)
+                    # TODO: add SARSA or something to be aware of rewards for actions
+                    # agent.fit(plainStates, plainRewards)
                     if VERBOSE:
                         FI.write("TRAINED\n")
                     states, rewards,qValues = [], [],[]
