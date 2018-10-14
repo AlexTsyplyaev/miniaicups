@@ -16,7 +16,7 @@ def to_one_hot(y, n_dims=None):
     y_tensor = y_tensor.type(torch.LongTensor).view(-1, 1)
     n_dims = n_dims if n_dims is not None else int(torch.max(y_tensor)) + 1
     y_one_hot = torch.zeros(y_tensor.size()[0], n_dims).scatter_(1, y_tensor, 1)
-    return Variable(y_one_hot) if isinstance(y, Variable) else y_one_hot
+    return Variable(y_one_hot)
 
 
 def where(cond, x_1, x_2):
@@ -31,7 +31,7 @@ def define_network(state_dim, n_actions):
         nn.ReLU(),
         nn.Linear(50, 50),
         nn.ReLU(),
-        nn.Linear(50, 3)
+        nn.Linear(50, n_actions)
     )
     return network
 
@@ -105,10 +105,12 @@ wines=0
 loses=0
 states, actions, rewards, dones, next_states = [], [], [], [], []
 gamma=0.98
-lives,previouslives=0,0
+lives,prev_lives=0,0
 prevCoords = ()
 isTrained = False
 commands = ('left', 'right', 'stop')
+epsilon = 0.3
+epsilon_decay = 0.98
 
 agentPath = "agent.pth"
 agent = define_network(45, 3)
@@ -134,17 +136,17 @@ while True:
             lives=dict["params"]["my_lives"]
             prevCoords = ()
             if gamecount==0:
-                previouslives=dict["params"]["my_lives"]
+                prev_lives=dict["params"]["my_lives"]
             else:
                 next_states.extend([states[len(states) - i - 1] for i in reversed(range(ticknum - 1))] + states[-1])
                 dones[-1] = True
-                if lives==previouslives:
+                if lives==prev_lives:  # not dead yet
                     rewards[-1] = 1
                     wines+=1
                 else:
                     rewards[-1] = -1
                     loses+=1
-                previouslives=lives
+                prev_lives=lives
                 if VERBOSE and gamecount%20==0:
                     FI.write("\n25 games passed in:")
                     FI.write(str(datetime.datetime.now().time()))
@@ -159,14 +161,14 @@ while True:
                     FI.write(str(ticksum))
                     FI.write("\n")
                 if (not isTrained) and (gamecount == 50) and args.train:
-                    isTrained = True
+                    # isTrained = True
                     opt.zero_grad()
                     loss = compute_td_loss(states, actions, rewards, states[1:] + [states[-1]], dones)
                     loss.backward()
                     opt.step()
                     if VERBOSE:
                         FI.write("TRAINED\n")
-                    states, rewards,qValues = [], [],[]
+                    states, rewards, qValues = [], [],[]
                     gamecount = 0
                     wines = 0
                     loses = 0
@@ -174,7 +176,6 @@ while True:
             numpy_2d_arrays[dict["params"]["proto_car"]["external_id"] - 1] = 1
             numpy_2d_arrays[dict["params"]["proto_map"]["external_id"] + 2] = 1
         elif dict["type"] == "tick":
-
             mycar_data = list(
                 [[num for elem in dict["params"]["my_car"][:1]+dict["params"]["my_car"][3:4]+dict["params"]["my_car"][4:] for num in
                  elem]+
@@ -202,11 +203,13 @@ while True:
             state = np.array(\
                 numpy_2d_arrays + mycar_data + enemycar_data + [dict["params"]["deadline_position"]]
                  + speeds + [ticknum])
-            choice=get_action(state, 0.3)
+            choice=get_action(state, epsilon)
             states.append(state)
             actions.append(choice)
             rewards.append(0)
             dones.append(False)
+            # update epsilon:
+            epsilon = min(epsilon * epsilon_decay, 0.1)
             FI.write(commands[choice])
             FI.write("\n")
             print(json.dumps({"command": commands[choice]}))
