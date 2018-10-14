@@ -6,48 +6,106 @@ import pickle
 from pathlib import Path
 import argparse
 
+import numpy as np
 
-# local imports
-from contextlib import contextmanager
-@contextmanager
-def import_from(rel_path):
-    """Add module import relative path to sys.path"""
-    import sys
-    import os
-    cur_dir = os.path.dirname(os.path.abspath(__file__))
-    sys.path.insert(0, os.path.join(cur_dir, rel_path))
-    yield
-    sys.path.pop(0)
+import torch, torch.nn as nn
+from torch.autograd import Variable
 
-with import_from('.'):
-    from networks import Networks
-    from pytorch_agent import Agent
+def to_one_hot(y, n_dims=None):
+    """ helper #1: take an integer vector (tensor of variable) and convert it to 1-hot matrix. """
+    y_tensor = y.data if isinstance(y, Variable) else y
+    y_tensor = y_tensor.type(torch.LongTensor).view(-1, 1)
+    n_dims = n_dims if n_dims is not None else int(torch.max(y_tensor)) + 1
+    y_one_hot = torch.zeros(y_tensor.size()[0], n_dims).scatter_(1, y_tensor, 1)
+    return Variable(y_one_hot) if isinstance(y, Variable) else y_one_hot
 
 
-def _to_np_array(value):
-    """Convert value to list"""
-    if isinstance(value, list):
-        return np.array(value)
-    if type(value) is np.ndarray:
-        return value
-    return np.array([value])
+def where(cond, x_1, x_2):
+    """ helper #2: like np.where but in PyTorch. """
+    return (cond * x_1) + ((1-cond) * x_2)
+
+
+# < YOUR CODE HERE >
+def define_network(state_dim, n_actions):
+    network = nn.Sequential(
+        nn.Linear(state_dim, 50),
+        nn.ReLU(),
+        nn.Linear(50, 50),
+        nn.ReLU(),
+        nn.Linear(50, 3)
+    )
+    return network
+
+
+# < YOUR CODE HERE >
+n_actions = 3
+def get_action(state, epsilon):
+    """
+    sample actions with epsilon-greedy policy
+    recap: with probability = epsilon pick random action, else pick action with highest Q(s,a)
+    """
+    state = Variable(torch.FloatTensor(state))
+    q_values = agent(state).data.numpy()
+
+    r = np.random.choice(2, p=[epsilon, 1-epsilon])
+    if r == 1:
+        return int(np.argmax(q_values))
+    else:
+        return random.choice([0,1,2])
+
+
+# < YOUR CODE HERE >
+def compute_td_loss(states, actions, rewards, next_states, is_done, gamma=0.99, check_shapes=False):
+    """ Compute td loss using torch operations only."""
+    states = Variable(torch.FloatTensor(states))  # shape: [batch_size, state_size]
+    actions = Variable(torch.IntTensor(actions))  # shape: [batch_size]
+    rewards = Variable(torch.FloatTensor(rewards))  # shape: [batch_size]
+    next_states = Variable(torch.FloatTensor(next_states))  # shape: [batch_size, state_size]
+    is_done = Variable(torch.FloatTensor(is_done))  # shape: [batch_size]
+
+    # get q-values for all actions in current states
+    predicted_qvalues = agent(states)  # < YOUR CODE HERE >
+    # select q-values for chosen actions
+    predicted_qvalues_for_actions = torch.sum(predicted_qvalues.cpu() * to_one_hot(actions, n_actions), dim=1)
+    # compute q-values for all actions in next states
+    predicted_next_qvalues = agent(next_states)  # < YOUR CODE HERE >
+    # compute V*(next_states) using predicted next q-values
+    next_state_values, _ = torch.max(predicted_next_qvalues, dim=1)
+
+    assert isinstance(next_state_values.data, torch.FloatTensor)
+
+    # compute 'target q-values' for loss
+    target_qvalues_for_actions = rewards + gamma * next_state_values  # < YOUR CODE HERE >
+    # at the last state we shall use simplified formula: Q(s,a) = r(s,a) since s' doesn't exist
+    target_qvalues_for_actions = where(is_done, rewards, target_qvalues_for_actions).cpu()
+    # Mean Squared Error loss to minimize
+    loss = torch.mean((predicted_qvalues_for_actions - target_qvalues_for_actions.detach()) ** 2)
+
+    if check_shapes:
+        assert predicted_next_qvalues.data.dim() == 2, \
+            'make sure you predicted q-values for all actions in next state'
+        assert next_state_values.data.dim() == 1, \
+            'make sure you computed V(s-prime) as maximum over just the actions axis and not all axes'
+        assert target_qvalues_for_actions.data.dim() == 1, \
+            'there is something wrong with target q-values, they must be a vector'
+
+    return loss
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--train', dest='train', action='store_true', default=False)
 args = parser.parse_args()
 
-VERBOSE = False  # used for logging
+VERBOSE = True  # used for logging
 
-networks = Networks()
 numpy_2d_arrays = [0]*9
 ticknum,ticksum=0,0
 gamecount=-1
 gamecountscheduler=-1
 wines=0
 loses=0
-states, qValues, rewards = [], [], []
-gamma=0.998
+states, actions, rewards, dones, next_states = [], [], [], [], []
+gamma=0.98
 lives,previouslives=0,0
 prevCoords = ()
 isTrained = False
@@ -59,7 +117,7 @@ if agentPath.is_file():
     agent = pickle.load(F)
     F.close()
 else:
-    agent = Agent(networks['test'](48, 1), solver='sgd', loss='mse')
+    agent = define_network(45, 3)
     F = open(str(agentPath), "wb")
     pickle.dump(agent, F)
     F.close()
@@ -69,6 +127,8 @@ if VERBOSE:
     FI.write("\nWorks\n")
     FI.write(str(datetime.datetime.now().time()))
     FI.write("\n")
+
+opt = torch.optim.Adam(agent.parameters(), lr=1e-4)
 
 while True:
     try:
@@ -82,11 +142,13 @@ while True:
             if gamecount==0:
                 previouslives=dict["params"]["my_lives"]
             else:
+                next_states.extend([states[len(states) - i - 1] for i in reversed(range(ticknum - 1))] + states[-1])
+                dones[-1] = True
                 if lives==previouslives:
-                    rewards.append(-10)
+                    rewards[-1] = 1
                     wines+=1
                 else:
-                    rewards.append(10)
+                    rewards[-1] = -1
                     loses+=1
                 previouslives=lives
                 if VERBOSE and gamecount%20==0:
@@ -104,39 +166,16 @@ while True:
                     FI.write("\n")
                 if (not isTrained) and (gamecount == 50) and args.train:
                     isTrained = True
-                    extendedRewards = []
-                    for matchI in range(len(rewards)):
-                        if len(states[matchI]) != len(qValues[matchI]):
-                            print('len(states) != len(qValues)')
-                        matchLength = len(states[matchI])
-                        extendedRewards.append([[]] * matchLength)
-                        if len(extendedRewards) != matchI + 1:
-                            print('len(extendedRewards) != matchI + 1')
-                        extendedRewards[-1][matchLength - 1] = rewards[matchI]
-                        for tickI in reversed(range(matchLength - 1)): # already made update of the last reward
-                            extendedRewards[-1][tickI] = gamma * extendedRewards[-1][tickI + 1] # we have zero rewards on all other iterations
-
-                        plainStates = []
-                        for match in states:
-                            for tick in match:
-                                plainStates.append(tick)
-                        plainRewards = []
-                        for match in extendedRewards:
-                            for tick in match:
-                                plainRewards.append(_to_np_array(tick))
-                    if VERBOSE:
-                        with open('plain_tick.txt', 'w+') as tick_file:
-                            tick_file.write('plainStates: {val}\n'.format(val=plainStates))
-                            tick_file.write('plainRewards: {val}\n'.format(val=plainRewards))
-                    agent.fit(plainStates, plainRewards)
+                    opt.zero_grad()
+                    loss = compute_td_loss(states, actions, rewards, states[1:] + [states[-1]], dones)
+                    loss.backward()
+                    opt.step()
                     if VERBOSE:
                         FI.write("TRAINED\n")
                     states, rewards,qValues = [], [],[]
                     gamecount = 0
                     wines = 0
                     loses = 0
-            states.append([])
-            qValues.append([])
             ticknum,numpy_2d_arrays = 0,[0]*9
             numpy_2d_arrays[dict["params"]["proto_car"]["external_id"] - 1] = 1
             numpy_2d_arrays[dict["params"]["proto_map"]["external_id"] + 2] = 1
@@ -166,26 +205,17 @@ while True:
 
             ticknum+=1
             ticksum+=1
-            state=\
-            [np.array(\
+            state = np.array(\
                 numpy_2d_arrays + mycar_data + enemycar_data + [dict["params"]["deadline_position"]]
-                 + speeds + [ticknum] + [1,0,0]),
-            np.array(\
-                numpy_2d_arrays + mycar_data + enemycar_data + [dict["params"]["deadline_position"]]
-                 + speeds + [ticknum] + [0,1,0]),
-            np.array(\
-                numpy_2d_arrays + mycar_data + enemycar_data + [dict["params"]["deadline_position"]]
-                 + speeds + [ticknum] + [0,0,1])]
-            qValue=np.array([agent.predict(state[0].reshape(1, -1))[0]]+[agent.predict(state[1].reshape(1, -1))[0]]+[agent.predict(state[2].reshape(1, -1))[0]])
-            qValueIdx = np.argmax(qValue)
-            choice=np.random.choice([qValueIdx,0,1,2],p=[0.7,0.1,0.1,0.1])
-            states[gamecount].append(state[choice].tolist())
-            qValues[gamecount].append(qValue[choice])
-            if False:
-                cmd = random.choice(commands)
-                print(json.dumps({"command": cmd, 'debug': cmd}))
-            elif True: #gamecountscheduler>20000:
-                print(json.dumps({"command": commands[choice], 'debug': commands[choice]}))
+                 + speeds + [ticknum])
+            choice=get_action(state, 0.3)
+            states.append(state)
+            actions.append(choice)
+            rewards.append(0)
+            dones.append(False)
+            FI.write(commands[choice])
+            FI.write("\n")
+            print(json.dumps({"command": commands[choice]}))
 
     except EOFError:
         if args.train:

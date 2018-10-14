@@ -18,7 +18,7 @@ python_interpreter = 'python'.format(
 fc = FileClient([python_interpreter, '-u', os.path.join(python_path, 'pytorch_main.py'), '--train'], None)
 sc = FileClient([python_interpreter, '-u', os.path.join(python_path, 'pytorch_main.py')], None)
 game = None
-r = np.random.choice(2, p=[0.2, 0.8])
+r = np.random.choice(2, p=[0.5, 0.5])
 if r == 1:
     print('Usual session')
     game = Game([fc, sc], games, extended_save=False)
