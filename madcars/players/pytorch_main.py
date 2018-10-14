@@ -2,8 +2,7 @@ import json
 import random
 import datetime
 import numpy as np
-import pickle
-from pathlib import Path
+import os
 import argparse
 
 import numpy as np
@@ -111,16 +110,11 @@ prevCoords = ()
 isTrained = False
 commands = ('left', 'right', 'stop')
 
-agentPath = Path("agent.p")
-if agentPath.is_file():
-    F = open(str(agentPath), "rb")
-    agent = pickle.load(F)
-    F.close()
-else:
-    agent = define_network(45, 3)
-    F = open(str(agentPath), "wb")
-    pickle.dump(agent, F)
-    F.close()
+agentPath = "agent.pth"
+agent = define_network(45, 3)
+if os.path.isfile(agentPath):
+    # load weights
+    agent.load_state_dict(torch.load(agentPath))
 
 if VERBOSE:
     FI = open("zz.txt", "a", buffering=1)
@@ -219,9 +213,8 @@ while True:
 
     except EOFError:
         if args.train:
-            F = open(agentPath, "wb")
-            pickle.dump(agent, F)
-            F.close()
+            # save weights
+            torch.save(agent.state_dict(), agentPath)
         if VERBOSE:
             FI.write("\n")
             FI.write("BAD WOLF")
