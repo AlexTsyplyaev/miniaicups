@@ -3,8 +3,8 @@ import random
 import datetime
 import numpy as np
 import pickle
-from pathlib import Path
 import argparse
+import os
 
 
 # local imports
@@ -53,16 +53,13 @@ prevCoords = ()
 isTrained = False
 commands = ('left', 'right', 'stop')
 
-agentPath = Path("agent.p")
-if agentPath.is_file():
-    F = open(str(agentPath), "rb")
-    agent = pickle.load(F)
-    F.close()
-else:
-    agent = Agent(networks['test'](48, 1), solver='sgd', loss='mse')
-    F = open(str(agentPath), "wb")
-    pickle.dump(agent, F)
-    F.close()
+# create agent
+agent = Agent(networks['test'](48, 1), solver='sgd', loss='mse')
+
+# load agent if file exists
+agent_state_save = 'pytorch_agent_state.pth'
+if os.path.isfile(agent_state_save):
+    agent.load_state(agent_state_save)
 
 if VERBOSE:
     FI = open("zz.txt", "a", buffering=1)
@@ -176,7 +173,7 @@ while True:
             np.array(\
                 numpy_2d_arrays + mycar_data + enemycar_data + [dict["params"]["deadline_position"]]
                  + speeds + [ticknum] + [0,0,1])]
-            qValue=np.array([agent.predict(state[0].reshape(1, -1))[0]]+[agent.predict(state[1].reshape(1, -1))[0]]+[agent.predict(state[2].reshape(1, -1))[0]])
+            qValue=np.array([agent.predict(state[0])[0]]+[agent.predict(state[1])[0]]+[agent.predict(state[2])[0]])
             qValueIdx = np.argmax(qValue)
             choice=np.random.choice([qValueIdx,0,1,2],p=[0.7,0.1,0.1,0.1])
             states[gamecount].append(state[choice].tolist())
@@ -189,9 +186,8 @@ while True:
 
     except EOFError:
         if args.train:
-            F = open(agentPath, "wb")
-            pickle.dump(agent, F)
-            F.close()
+            # save agent's state
+            agent.save_state(agent_state_save)
         if VERBOSE:
             FI.write("\n")
             FI.write("BAD WOLF")

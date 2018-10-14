@@ -70,3 +70,14 @@ class Agent(object):
         X = _torch_var(X)
         q_values = self._net(X).data.numpy()
         return q_values
+
+    def save_state(self, filepath=''):
+        """Save agent's state (network) into file"""
+        if not filepath:
+            filepath = 'pytorch_agent.pth'
+        torch.save(self._net.state_dict(), filepath)
+        return filepath
+
+    def load_state(self, filepath):
+        """Load agent's state (network) from file"""
+        self._net.load_state_dict(torch.load(filepath))

@@ -13,7 +13,7 @@ games = [','.join(t) for t in product(maps, cars)]*101
 cur_dir = os.path.dirname(os.path.basename(__file__))
 rel_path = '../players'.split('/')
 python_path = os.path.join(cur_dir, *rel_path)
-python_interpreter = 'python'.format(
+python_interpreter = 'python{major}'.format(
     major=sys.version_info.major, minor=sys.version_info.minor)
 fc = FileClient([python_interpreter, '-u', os.path.join(python_path, 'pytorch_main.py'), '--train'], None)
 sc = FileClient([python_interpreter, '-u', os.path.join(python_path, 'pytorch_main.py')], None)
