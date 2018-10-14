@@ -44,7 +44,7 @@ numpy_2d_arrays = [0]*9
 ticknum,ticksum=0,0
 gamecount=-1
 gamecountscheduler=-1
-wines=0
+wins=0
 loses=0
 states, qValues, rewards = [], [], []
 gamma=0.998
@@ -84,7 +84,7 @@ while True:
             else:
                 if lives==previouslives:
                     rewards.append(-10)
-                    wines+=1
+                    wins+=1
                 else:
                     rewards.append(10)
                     loses+=1
@@ -92,8 +92,8 @@ while True:
                 if VERBOSE and gamecount%20==0:
                     FI.write("\n25 games passed in:")
                     FI.write(str(datetime.datetime.now().time()))
-                    FI.write("\nTotal wines:")
-                    FI.write(str(wines))
+                    FI.write("\nTotal wins:")
+                    FI.write(str(wins))
                     FI.write("\nTotal loses:")
                     FI.write(str(loses))
                     FI.write("\nTotal matches:")
@@ -133,7 +133,7 @@ while True:
                         FI.write("TRAINED\n")
                     states, rewards,qValues = [], [],[]
                     gamecount = 0
-                    wines = 0
+                    wins = 0
                     loses = 0
             states.append([])
             qValues.append([])
