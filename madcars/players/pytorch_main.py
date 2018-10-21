@@ -10,6 +10,7 @@ import numpy as np
 import torch, torch.nn as nn
 from torch.autograd import Variable
 
+
 def to_one_hot(y, n_dims=None):
     """ helper #1: take an integer vector (tensor of variable) and convert it to 1-hot matrix. """
     y_tensor = y.data if isinstance(y, Variable) else y
@@ -27,10 +28,12 @@ def where(cond, x_1, x_2):
 # < YOUR CODE HERE >
 def define_network(state_dim, n_actions):
     network = nn.Sequential(
-        nn.Linear(state_dim, 50),
-        nn.ReLU(),
-        nn.Linear(50, 50),
-        nn.ReLU(),
+        nn.Linear(state_dim, 100),
+        nn.LeakyReLU(),
+        nn.Linear(100, 200),
+        nn.LeakyReLU(),
+        nn.Linear(200, 50),
+        nn.LeakyReLU(),
         nn.Linear(50, n_actions)
     )
     return network
@@ -65,7 +68,8 @@ def compute_td_loss(states, actions, rewards, next_states, is_done, gamma=0.99, 
     # get q-values for all actions in current states
     predicted_qvalues = agent(states)  # < YOUR CODE HERE >
     # select q-values for chosen actions
-    predicted_qvalues_for_actions = torch.sum(predicted_qvalues.cpu() * to_one_hot(actions, n_actions), dim=1)
+    predicted_qvalues_for_actions = torch.sum(
+        predicted_qvalues.cpu() * to_one_hot(actions, n_actions), dim=1)
     # compute q-values for all actions in next states
     predicted_next_qvalues = agent(next_states)  # < YOUR CODE HERE >
     # compute V*(next_states) using predicted next q-values
@@ -101,18 +105,17 @@ numpy_2d_arrays = [0]*9
 ticknum,ticksum=0,0
 gamecount=-1
 gamecountscheduler=-1
-wines=0
+wins=0
 loses=0
 states, actions, rewards, dones, next_states = [], [], [], [], []
 gamma=0.98
 lives,prev_lives=0,0
 prevCoords = ()
-isTrained = False
 commands = ('left', 'right', 'stop')
-epsilon = 0.3
+epsilon = 0.5
 epsilon_decay = 0.98
 
-agentPath = "agent.pth"
+agentPath = os.path.abspath(os.path.join(os.path.dirname(__file__), "agent.pth"))
 agent = define_network(45, 3)
 if os.path.isfile(agentPath):
     # load weights
@@ -141,17 +144,19 @@ while True:
                 next_states.extend([states[len(states) - i - 1] for i in reversed(range(ticknum - 1))] + states[-1])
                 dones[-1] = True
                 if lives==prev_lives:  # not dead yet
-                    rewards[-1] = 1
-                    wines+=1
+                    rewards[-1] += 100
+                    wins+=1
                 else:
-                    rewards[-1] = -1
+                    rewards[-1] += -100
                     loses+=1
                 prev_lives=lives
                 if VERBOSE and gamecount%20==0:
+                    # FI.write(z)
+                    # exit(0)
                     FI.write("\n25 games passed in:")
                     FI.write(str(datetime.datetime.now().time()))
-                    FI.write("\nTotal wines:")
-                    FI.write(str(wines))
+                    FI.write("\nTotal wins:")
+                    FI.write(str(wins))
                     FI.write("\nTotal loses:")
                     FI.write(str(loses))
                     FI.write("\nTotal matches:")
@@ -160,18 +165,25 @@ while True:
                     FI.write("\nSum of ticks:")
                     FI.write(str(ticksum))
                     FI.write("\n")
-                if (not isTrained) and (gamecount == 50) and args.train:
-                    # isTrained = True
+                if gamecount % 2 == 0 and args.train:
                     opt.zero_grad()
-                    loss = compute_td_loss(states, actions, rewards, states[1:] + [states[-1]], dones)
+                    loss = compute_td_loss(
+                        states,
+                        actions,
+                        rewards,
+                        states[1:] + [states[-1]],
+                        dones)
                     loss.backward()
                     opt.step()
+                    # save weights
+                    torch.save(agent.state_dict(), agentPath)
                     if VERBOSE:
                         FI.write("TRAINED\n")
-                    states, rewards, qValues = [], [],[]
+                    states, rewards, qValues, actions, dones = [], [], [], [], []
                     gamecount = 0
-                    wines = 0
+                    wins = 0
                     loses = 0
+                    epsilon = 0.5
             ticknum,numpy_2d_arrays = 0,[0]*9
             numpy_2d_arrays[dict["params"]["proto_car"]["external_id"] - 1] = 1
             numpy_2d_arrays[dict["params"]["proto_map"]["external_id"] + 2] = 1
@@ -207,6 +219,8 @@ while True:
             states.append(state)
             actions.append(choice)
             rewards.append(0)
+            for i in range(len(rewards)):
+                rewards[i] -= 10  # penalize for time spent not winning
             dones.append(False)
             # update epsilon:
             epsilon = min(epsilon * epsilon_decay, 0.1)
