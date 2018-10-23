@@ -99,6 +99,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--train', dest='train', action='store_true', default=False)
 args = parser.parse_args()
 
+BASE_EPSILON = lambda: 0.5 if args.train else 0
+
 VERBOSE = True  # used for logging
 
 numpy_2d_arrays = [0]*9
@@ -112,7 +114,7 @@ gamma=0.98
 lives,prev_lives=0,0
 prevCoords = ()
 commands = ('left', 'right', 'stop')
-epsilon = 0.5
+epsilon = BASE_EPSILON()
 epsilon_decay = 0.98
 
 agentPath = os.path.abspath(os.path.join(os.path.dirname(__file__), "agent.pth"))
@@ -151,8 +153,6 @@ while True:
                     loses+=1
                 prev_lives=lives
                 if VERBOSE and gamecount%20==0:
-                    # FI.write(z)
-                    # exit(0)
                     FI.write("\n25 games passed in:")
                     FI.write(str(datetime.datetime.now().time()))
                     FI.write("\nTotal wins:")
@@ -183,7 +183,7 @@ while True:
                     gamecount = 0
                     wins = 0
                     loses = 0
-                    epsilon = 0.5
+                    epsilon = BASE_EPSILON()
             ticknum,numpy_2d_arrays = 0,[0]*9
             numpy_2d_arrays[dict["params"]["proto_car"]["external_id"] - 1] = 1
             numpy_2d_arrays[dict["params"]["proto_map"]["external_id"] + 2] = 1
@@ -218,12 +218,11 @@ while True:
             choice=get_action(state, epsilon)
             states.append(state)
             actions.append(choice)
-            rewards.append(0)
-            for i in range(len(rewards)):
-                rewards[i] -= 10  # penalize for time spent not winning
+            rewards.append(-1)
             dones.append(False)
             # update epsilon:
-            epsilon = min(epsilon * epsilon_decay, 0.1)
+            if args.train:
+                epsilon = max(epsilon * epsilon_decay, 0.1)
             FI.write(commands[choice])
             FI.write("\n")
             print(json.dumps({"command": commands[choice]}))
