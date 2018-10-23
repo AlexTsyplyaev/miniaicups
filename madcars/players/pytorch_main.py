@@ -4,6 +4,7 @@ import datetime
 import numpy as np
 import os
 import argparse
+import fcntl
 
 import numpy as np
 
@@ -99,7 +100,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--train', dest='train', action='store_true', default=False)
 args = parser.parse_args()
 
-BASE_EPSILON = lambda: 0.5 if args.train else 0
+BASE_EPSILON = lambda: 0.5 if args.train else 0.1
 
 VERBOSE = True  # used for logging
 
@@ -118,6 +119,7 @@ epsilon = BASE_EPSILON()
 epsilon_decay = 0.98
 
 agentPath = os.path.abspath(os.path.join(os.path.dirname(__file__), "agent.pth"))
+agentLock = os.path.abspath(os.path.join(os.path.dirname(__file__), "agent.pth.lock"))
 agent = define_network(45, 3)
 if os.path.isfile(agentPath):
     # load weights
@@ -166,17 +168,28 @@ while True:
                     FI.write(str(ticksum))
                     FI.write("\n")
                 if gamecount % 2 == 0 and args.train:
-                    opt.zero_grad()
-                    loss = compute_td_loss(
-                        states,
-                        actions,
-                        rewards,
-                        states[1:] + [states[-1]],
-                        dones)
-                    loss.backward()
-                    opt.step()
-                    # save weights
-                    torch.save(agent.state_dict(), agentPath)
+                    with open(agentLock, 'w+') as agent_lock:
+                        # 1. lock agent.pth file
+                        fcntl.lockf(agent_lock, fcntl.LOCK_EX)
+                        # 2. read new agent weights
+                        if os.path.isfile(agentPath):
+                            agent.load_state_dict(torch.load(agentPath))
+                        # 3. compute loss + do backprop
+                        opt.zero_grad()
+                        loss = compute_td_loss(
+                            states,
+                            actions,
+                            rewards,
+                            states[1:] + [states[-1]],
+                            dones)
+                        loss.backward()
+                        opt.step()
+                        # 4. save new weights to agent.pth
+                        torch.save(agent.state_dict(), agentPath)
+                        # 5. unlock agent.pth
+                        fcntl.lockf(agent_lock, fcntl.LOCK_UN)
+                    if os.path.exists(agentLock):
+                        os.remove(agentLock)  # clean-up after
                     if VERBOSE:
                         FI.write("TRAINED\n")
                     states, rewards, qValues, actions, dones = [], [], [], [], []

@@ -18,5 +18,5 @@ echo "Game:"
 
 for ((i=0; i < $num_runs; ++i));
 do
-    python3 -u $runner_folder/localrunner.py -f "python3 -u $agent_folder/pytorch_main.py --train" -s "python3 -u $agent_folder/pytorch_main.py"
+    python3 -u $runner_folder/localrunner.py -f "python3 -u $agent_folder/pytorch_main.py --train" -s "python3 -u $agent_folder/pytorch_main.py --train"
 done
