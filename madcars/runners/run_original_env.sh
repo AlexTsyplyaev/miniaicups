@@ -2,21 +2,32 @@
 
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 agent_folder=$(realpath "$script_dir/../players")
-runner_folder=$(realpath "${RUNNER}")
-num_runs=10
+runner_folder=$(realpath "$script_dir")
+train="--train"
+runs=""
+
+if [[ ! -z "${RUNNER}"  ]]
+then
+    runner_folder=$(realpath "${RUNNER}")
+    train=""
+fi
+
 if [[ ! -z "${1}"  ]]
 then
-    num_runs="${1}"
+    runs="-g ${1}"
+fi
+
+full=""
+if [[ ! -z "${2}"  ]]
+then
+    full="--full"
 fi
 
 echo "------------------------------------"
 echo "agent location: $agent_folder"
 echo "runner location: $runner_folder"
-echo "sessions number: $num_runs"
+echo "options: $runs $full $train"
 echo "------------------------------------"
 echo "Game:"
 
-for ((i=0; i < $num_runs; ++i));
-do
-    python3 -u $runner_folder/localrunner.py -f "python3 -u $agent_folder/pytorch_main.py --train" -s "python3 -u $agent_folder/pytorch_main.py --train"
-done
+python3 -u $runner_folder/localrunner.py -f "python3 -u $agent_folder/pytorch_main.py $train" -s "python3 -u $agent_folder/pytorch_main.py $train" ${runs} ${full}

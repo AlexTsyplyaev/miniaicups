@@ -100,7 +100,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--train', dest='train', action='store_true', default=False)
 args = parser.parse_args()
 
-BASE_EPSILON = lambda: 0.5 if args.train else 0.1
+BASE_EPSILON = lambda: 0.5 if args.train else 0
 
 VERBOSE = True  # used for logging
 
@@ -124,6 +124,11 @@ agent = define_network(45, 3)
 if os.path.isfile(agentPath):
     # load weights
     agent.load_state_dict(torch.load(agentPath))
+else:
+    agent_lock = open(agentLock, 'w+')
+    fcntl.lockf(agent_lock, fcntl.LOCK_EX)
+    torch.save(agent.state_dict(), agentPath)
+    fcntl.lockf(agent_lock, fcntl.LOCK_UN)
 
 if VERBOSE:
     FI = open("zz.txt", "a", buffering=1)
@@ -168,28 +173,25 @@ while True:
                     FI.write(str(ticksum))
                     FI.write("\n")
                 if gamecount % 2 == 0 and args.train:
-                    with open(agentLock, 'w+') as agent_lock:
-                        # 1. lock agent.pth file
-                        fcntl.lockf(agent_lock, fcntl.LOCK_EX)
-                        # 2. read new agent weights
-                        if os.path.isfile(agentPath):
-                            agent.load_state_dict(torch.load(agentPath))
-                        # 3. compute loss + do backprop
-                        opt.zero_grad()
-                        loss = compute_td_loss(
-                            states,
-                            actions,
-                            rewards,
-                            states[1:] + [states[-1]],
-                            dones)
-                        loss.backward()
-                        opt.step()
-                        # 4. save new weights to agent.pth
-                        torch.save(agent.state_dict(), agentPath)
-                        # 5. unlock agent.pth
-                        fcntl.lockf(agent_lock, fcntl.LOCK_UN)
-                    if os.path.exists(agentLock):
-                        os.remove(agentLock)  # clean-up after
+                    agent_lock = open(agentLock, 'w+')
+                    # 1. lock agent.pth file
+                    fcntl.lockf(agent_lock, fcntl.LOCK_EX)
+                    # 2. read new agent weights
+                    agent.load_state_dict(torch.load(agentPath))
+                    # 3. compute loss + do backprop
+                    opt.zero_grad()
+                    loss = compute_td_loss(
+                        states,
+                        actions,
+                        rewards,
+                        states[1:] + [states[-1]],
+                        dones)
+                    loss.backward()
+                    opt.step()
+                    # 4. save new weights to agent.pth
+                    torch.save(agent.state_dict(), agentPath)
+                    # 5. unlock agent.pth
+                    fcntl.lockf(agent_lock, fcntl.LOCK_UN)
                     if VERBOSE:
                         FI.write("TRAINED\n")
                     states, rewards, qValues, actions, dones = [], [], [], [], []
@@ -243,7 +245,12 @@ while True:
     except EOFError:
         if args.train:
             # save weights
+            agent_lock = open(agentLock, 'w+')
+            fcntl.lockf(agent_lock, fcntl.LOCK_EX)
             torch.save(agent.state_dict(), agentPath)
+            fcntl.lockf(agent_lock, fcntl.LOCK_UN)
+            if os.path.exists(agentLock):
+                os.remove(agentLock)  # clean-up after
         if VERBOSE:
             FI.write("\n")
             FI.write("BAD WOLF")
