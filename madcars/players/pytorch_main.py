@@ -4,7 +4,6 @@ import datetime
 import numpy as np
 import os
 import argparse
-import fcntl
 from filelock import FileLock
 
 import numpy as np
@@ -246,8 +245,6 @@ while True:
             agent_lock = FileLock(agentLock)
             with agent_lock:
                 torch.save(agent.state_dict(), agentPath)
-            if os.path.exists(agentLock):
-                os.remove(agentLock)  # clean-up after
         if VERBOSE:
             FI.write("\n")
             FI.write("BAD WOLF")
