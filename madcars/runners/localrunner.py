@@ -19,6 +19,7 @@ parser.add_argument('-g', '--games-num', type=int,
     help='Number of games to play', default=100)
 parser.add_argument('--full', action='store_true',
     help='Run full games/cars', default=False)
+parser.add_argument('--no-eps', action='store_true', default=False)
 args = parser.parse_args()
 
 maps = ['PillMap']
@@ -42,6 +43,9 @@ sp = [python_interpreter, '-u', os.path.join(python_path, 'pytorch_main.py'),
     '--train']
 if args.sp is not None:
     sp = args.sp.split()
+if args.no_eps:
+    fp.append('--no-eps')
+    sp.append('--no-eps')
 fc = FileClient(fp, None)
 sc = FileClient(sp, None)
 game = None
