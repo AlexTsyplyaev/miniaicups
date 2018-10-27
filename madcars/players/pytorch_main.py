@@ -33,15 +33,17 @@ class Model(nn.Module):
         super(Model, self).__init__()
         self.fc1 = nn.Linear(n_states, n_states * 3)
         self.fc2 = nn.Linear(n_states * 3, n_states * 2)
-        self.fc3 = nn.Linear(n_states * 2, n_actions * 4)
-        self.fc_out1 = nn.Linear(n_actions * 4, n_actions)
+        self.fc3 = nn.Linear(n_states * 2, int(n_states * 1.5))
+        self.fc_out1 = nn.Linear(int(n_states * 1.5), n_actions)
+        self.fc_out2 = nn.Linear(int(n_states * 1.5), n_states)
 
     def forward(self, x):
-        x = F.leaky_relu(self.fc1(x), negative_slope=0.3)
-        x = F.leaky_relu(self.fc2(x), negative_slope=0.2)
+        x = F.leaky_relu(self.fc1(x))
+        x = F.leaky_relu(self.fc2(x))
         x = F.leaky_relu(self.fc3(x))
         o1 = self.fc_out1(x)
-        return o1
+        o2 = self.fc_out2(x)
+        return o1, o2
 
 
 def define_network(state_dim, n_actions):
@@ -56,7 +58,8 @@ def get_action(state, epsilon):
     recap: with probability = epsilon pick random action, else pick action with highest Q(s,a)
     """
     state = Variable(torch.FloatTensor(state))
-    q_values = agent(state).data.numpy()
+    q_values, _ = agent(state)
+    q_values = q_values.data.numpy()
 
     r = np.random.choice(2, p=[epsilon, 1-epsilon])
     if r == 1:
@@ -75,12 +78,12 @@ def compute_td_loss(states, actions, rewards, next_states, is_done, gamma=0.99, 
     is_done = Variable(torch.FloatTensor(is_done))  # shape: [batch_size]
 
     # get q-values for all actions in current states
-    predicted_qvalues = agent(states)  # < YOUR CODE HERE >
+    predicted_qvalues, predictes_states = agent(states)  # < YOUR CODE HERE >
     # select q-values for chosen actions
     predicted_qvalues_for_actions = torch.sum(
         predicted_qvalues.cpu() * to_one_hot(actions, n_actions), dim=1)
     # compute q-values for all actions in next states
-    predicted_next_qvalues = agent(next_states)  # < YOUR CODE HERE >
+    predicted_next_qvalues, _ = agent(next_states)  # < YOUR CODE HERE >
     # compute V*(next_states) using predicted next q-values
     next_state_values, _ = torch.max(predicted_next_qvalues, dim=1)
 
@@ -92,6 +95,7 @@ def compute_td_loss(states, actions, rewards, next_states, is_done, gamma=0.99, 
     target_qvalues_for_actions = where(is_done, rewards, target_qvalues_for_actions).cpu()
     # Mean Squared Error loss to minimize
     loss = torch.mean((predicted_qvalues_for_actions - target_qvalues_for_actions.detach()) ** 2)
+    loss_states = torch.norm(states - predictes_states, 2)
 
     if check_shapes:
         assert predicted_next_qvalues.data.dim() == 2, \
@@ -101,7 +105,7 @@ def compute_td_loss(states, actions, rewards, next_states, is_done, gamma=0.99, 
         assert target_qvalues_for_actions.data.dim() == 1, \
             'there is something wrong with target q-values, they must be a vector'
 
-    return loss
+    return loss + loss_states
 
 
 parser = argparse.ArgumentParser()
@@ -242,7 +246,6 @@ while True:
                 for i in range(len(coords)):
                     speeds.append(coords[i] - prevCoords[i])
             prevCoords = coords
-
             ticknum+=1
             ticksum+=1
             state = np.array(\
