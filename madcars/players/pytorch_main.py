@@ -29,13 +29,13 @@ def where(cond, x_1, x_2):
 # < YOUR CODE HERE >
 def define_network(state_dim, n_actions):
     network = nn.Sequential(
-        nn.Linear(state_dim, 100),
+        nn.Linear(state_dim, state_dim*3),
         nn.LeakyReLU(),
-        nn.Linear(100, 200),
+        nn.Linear(state_dim*3, state_dim*2),
         nn.LeakyReLU(),
-        nn.Linear(200, 50),
+        nn.Linear(state_dim*2, n_actions*4),
         nn.LeakyReLU(),
-        nn.Linear(50, n_actions)
+        nn.Linear(n_actions*4, n_actions)
     )
     return network
 
@@ -101,7 +101,12 @@ parser.add_argument('--train', dest='train', action='store_true', default=False)
 parser.add_argument('--no-eps', action='store_true', default=False)
 args = parser.parse_args()
 
-BASE_EPSILON = lambda: 0.5 if args.train and not args.no_eps else 0.1
+def BASE_EPSILON():
+    if not args.train:
+        return 0
+    if args.no_eps:
+        return 0.1
+    return 0.5
 
 VERBOSE = True  # used for logging
 
