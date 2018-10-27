@@ -7,6 +7,7 @@ import numpy as np
 import os
 import sys
 import argparse
+import platform
 
 parser = argparse.ArgumentParser(description='LocalRunner for MadCars')
 parser.add_argument('-f', '--fp', type=str, nargs='?',
@@ -29,12 +30,15 @@ if args.full:
         'IslandMap', 'IslandHoleMap']
     cars = cars = ['Buggy', 'Bus', 'SquareWheelsBuggy']
 
-games = [','.join(t) for t in product(maps, cars)]*args.games_num
+games = [','.join(t) for t in product(maps, cars)]*args.games_num * 2 + ['PillMap,Buggy']  # play at least games_num packs of games + 1
 cur_dir = os.path.dirname(__file__)
 rel_path = '../players'.split('/')
 python_path = os.path.abspath(os.path.join(cur_dir, *rel_path))
-python_interpreter = 'python{major}'.format(
-    major=sys.version_info.major)
+if 'Windows' == platform.system():
+    python_interpreter = 'python'
+else:
+    python_interpreter = 'python{major}'.format(
+        major=sys.version_info.major)
 fp = [python_interpreter, '-u', os.path.join(python_path, 'pytorch_main.py'),
     '--train', '--even']
 if args.fp is not None:

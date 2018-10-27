@@ -1,7 +1,6 @@
 import json
 import random
 import datetime
-import numpy as np
 import os
 import argparse
 from filelock import FileLock
@@ -44,10 +43,6 @@ class Model(nn.Module):
         o1 = self.fc_out1(x)
         o2 = self.fc_out2(x)
         return o1, o2
-
-
-def define_network(state_dim, n_actions):
-    return Model(state_dim, n_actions)
 
 
 # < YOUR CODE HERE >
@@ -146,7 +141,7 @@ epsilon_decay = 0.97
 
 agentPath = os.path.abspath(os.path.join(os.path.dirname(__file__), "agent.pth"))
 agentLock = os.path.abspath(os.path.join(os.path.dirname(__file__), "agent.pth.lock"))
-agent = define_network(45, 3)
+agent = Model(45, n_actions)
 if os.path.isfile(agentPath):
     # load weights
     agent.load_state_dict(torch.load(agentPath))
@@ -171,13 +166,13 @@ while True:
             gamecount+=1
             gamecountscheduler += 1
             lives=dict["params"]["my_lives"]
-            prevCoords = ()
+            prevCoords = None
             if gamecount==0:
                 prev_lives=dict["params"]["my_lives"]
             else:
                 next_states.extend([states[len(states) - i - 1] for i in reversed(range(ticknum - 1))] + states[-1])
                 dones[-1] = True
-                if lives==prev_lives:  # not dead yet
+                if lives==prev_lives:  # won
                     rewards[-1] = 200
                     wins+=1
                 else:
@@ -220,7 +215,6 @@ while True:
                     gamecount = 0
                     wins = 0
                     loses = 0
-                    epsilon = BASE_EPSILON()
             ticknum,numpy_2d_arrays = 0,[0]*9
             numpy_2d_arrays[dict["params"]["proto_car"]["external_id"] - 1] = 1
             numpy_2d_arrays[dict["params"]["proto_map"]["external_id"] + 2] = 1
@@ -259,8 +253,6 @@ while True:
             # update epsilon:
             if args.train:
                 epsilon = max(epsilon * epsilon_decay, 0.1)
-            FI.write(commands[choice])
-            FI.write("\n")
             print(json.dumps({"command": commands[choice]}))
     except EOFError:
         if args.train:
@@ -269,8 +261,6 @@ while True:
             with agent_lock:
                 torch.save(agent.state_dict(), agentPath)
         if VERBOSE:
-            FI.write("\n")
-            FI.write("BAD WOLF")
-            FI.write("\n")
+            FI.write('=' * 40 + 'End of Session\n')
             FI.close()
         exit(0)
