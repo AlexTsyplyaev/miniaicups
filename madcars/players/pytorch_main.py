@@ -78,7 +78,7 @@ def compute_td_loss(states, actions, rewards, next_states, is_done, gamma=0.99, 
     is_done = Variable(torch.FloatTensor(is_done))  # shape: [batch_size]
 
     # get q-values for all actions in current states
-    predicted_qvalues, predictes_states = agent(states)  # < YOUR CODE HERE >
+    predicted_qvalues, predicted_next_states = agent(states)  # < YOUR CODE HERE >
     # select q-values for chosen actions
     predicted_qvalues_for_actions = torch.sum(
         predicted_qvalues.cpu() * to_one_hot(actions, n_actions), dim=1)
@@ -95,7 +95,7 @@ def compute_td_loss(states, actions, rewards, next_states, is_done, gamma=0.99, 
     target_qvalues_for_actions = where(is_done, rewards, target_qvalues_for_actions).cpu()
     # Mean Squared Error loss to minimize
     loss = torch.mean((predicted_qvalues_for_actions - target_qvalues_for_actions.detach()) ** 2)
-    loss_states = torch.norm(states - predictes_states, 2)
+    loss_states = torch.norm(next_states - predicted_next_states, 2)
 
     if check_shapes:
         assert predicted_next_qvalues.data.dim() == 2, \
