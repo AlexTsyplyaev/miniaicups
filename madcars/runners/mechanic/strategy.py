@@ -66,7 +66,8 @@ class FileClient(Client):
         self.last_message = None
         if path_to_log is None:
             base_dir = os.getcwd()
-            now = datetime.datetime.now().strftime('%Y_%m_%d-%H-%M-%S.log.gz')
+            # now = datetime.datetime.now().strftime('%Y_%m_%d-%H-%M-%S.log.gz')
+            now = 'latest.log.gz'
             self.path_to_log = os.path.join(base_dir, now)
         else:
             self.path_to_log = path_to_log

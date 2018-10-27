@@ -3,3 +3,4 @@ Runners/visio.gz
 Runners/zz.txt
 zz.txt
 visio.gz
+*.pth.lock
