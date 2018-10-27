@@ -262,7 +262,6 @@ while True:
             FI.write(commands[choice])
             FI.write("\n")
             print(json.dumps({"command": commands[choice]}))
-
     except EOFError:
         if args.train:
             # save weights

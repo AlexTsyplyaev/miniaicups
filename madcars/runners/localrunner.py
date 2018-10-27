@@ -46,10 +46,16 @@ if args.sp is not None:
 if args.no_eps:
     fp.append('--no-eps')
     sp.append('--no-eps')
+
+play_against_random = np.random.choice([False, True], p=[0.7, 0.3])
+if play_against_random:
+    sp = [python_interpreter, '-u', os.path.join(python_path, 'r.py')]
+
 fc = FileClient(fp, None)
 sc = FileClient(sp, None)
 game = None
 r = np.random.choice(2, p=[0.5, 0.5])
+print('Against random?', play_against_random)
 if r == 1:
     print('Usual session')
     game = Game([fc, sc], games, extended_save=False)
