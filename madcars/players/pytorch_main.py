@@ -101,7 +101,7 @@ parser.add_argument('--train', dest='train', action='store_true', default=False)
 parser.add_argument('--no-eps', action='store_true', default=False)
 args = parser.parse_args()
 
-BASE_EPSILON = lambda: 0.5 if args.train and not args.no_eps else 0
+BASE_EPSILON = lambda: 0.5 if args.train and not args.no_eps else 0.1
 
 VERBOSE = True  # used for logging
 
@@ -153,10 +153,10 @@ while True:
                 next_states.extend([states[len(states) - i - 1] for i in reversed(range(ticknum - 1))] + states[-1])
                 dones[-1] = True
                 if lives==prev_lives:  # not dead yet
-                    rewards[-1] += 100
+                    rewards[-1] = 200
                     wins+=1
                 else:
-                    rewards[-1] += -100
+                    rewards[-1] = -100
                     loses+=1
                 prev_lives=lives
                 if VERBOSE and gamecount%20==0:
