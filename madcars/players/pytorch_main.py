@@ -10,6 +10,7 @@ import numpy as np
 
 import torch, torch.nn as nn
 from torch.autograd import Variable
+import torch.nn.functional as F
 
 
 def to_one_hot(y, n_dims=None):
@@ -27,17 +28,24 @@ def where(cond, x_1, x_2):
 
 
 # < YOUR CODE HERE >
+class Model(nn.Module):
+    def __init__(self, n_states, n_actions):
+        super(Model, self).__init__()
+        self.fc1 = nn.Linear(n_states, n_states * 3)
+        self.fc2 = nn.Linear(n_states * 3, n_states * 2)
+        self.fc3 = nn.Linear(n_states * 2, n_actions * 4)
+        self.fc_out1 = nn.Linear(n_actions * 4, n_actions)
+
+    def forward(self, x):
+        x = F.leaky_relu(self.fc1(x), negative_slope=0.3)
+        x = F.leaky_relu(self.fc2(x), negative_slope=0.2)
+        x = F.leaky_relu(self.fc3(x))
+        o1 = self.fc_out1(x)
+        return o1
+
+
 def define_network(state_dim, n_actions):
-    network = nn.Sequential(
-        nn.Linear(state_dim, state_dim*3),
-        nn.LeakyReLU(),
-        nn.Linear(state_dim*3, state_dim*2),
-        nn.LeakyReLU(),
-        nn.Linear(state_dim*2, n_actions*4),
-        nn.LeakyReLU(),
-        nn.Linear(n_actions*4, n_actions)
-    )
-    return network
+    return Model(state_dim, n_actions)
 
 
 # < YOUR CODE HERE >
@@ -99,7 +107,15 @@ def compute_td_loss(states, actions, rewards, next_states, is_done, gamma=0.99, 
 parser = argparse.ArgumentParser()
 parser.add_argument('--train', dest='train', action='store_true', default=False)
 parser.add_argument('--no-eps', action='store_true', default=False)
+parser.add_argument('--even', action='store_true', default=False)
 args = parser.parse_args()
+
+def modulo2(value, even):
+    value = value % 2
+    if even:
+        return value == 0
+    else:
+        return value != 0
 
 def BASE_EPSILON():
     if not args.train:
@@ -117,12 +133,12 @@ gamecountscheduler=-1
 wins=0
 loses=0
 states, actions, rewards, dones, next_states = [], [], [], [], []
-gamma=0.98
+gamma=0.95
 lives,prev_lives=0,0
 prevCoords = ()
 commands = ('left', 'right', 'stop')
 epsilon = BASE_EPSILON()
-epsilon_decay = 0.98
+epsilon_decay = 0.97
 
 agentPath = os.path.abspath(os.path.join(os.path.dirname(__file__), "agent.pth"))
 agentLock = os.path.abspath(os.path.join(os.path.dirname(__file__), "agent.pth.lock"))
@@ -177,7 +193,7 @@ while True:
                     FI.write("\nSum of ticks:")
                     FI.write(str(ticksum))
                     FI.write("\n")
-                if gamecount % 2 == 0 and args.train:
+                if args.train and modulo2(gamecount, args.even):
                     agent_lock = FileLock(agentLock)
                     with agent_lock:
                         # 1. read new agent weights

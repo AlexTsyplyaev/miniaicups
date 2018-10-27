@@ -36,7 +36,7 @@ python_path = os.path.abspath(os.path.join(cur_dir, *rel_path))
 python_interpreter = 'python{major}'.format(
     major=sys.version_info.major)
 fp = [python_interpreter, '-u', os.path.join(python_path, 'pytorch_main.py'),
-    '--train']
+    '--train', '--even']
 if args.fp is not None:
     fp = args.fp.split()
 sp = [python_interpreter, '-u', os.path.join(python_path, 'pytorch_main.py'),
