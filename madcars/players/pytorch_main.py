@@ -1,7 +1,6 @@
 import json
 import random
 import datetime
-import numpy as np
 import os
 import argparse
 from filelock import FileLock
@@ -10,6 +9,7 @@ import numpy as np
 
 import torch, torch.nn as nn
 from torch.autograd import Variable
+import torch.nn.functional as F
 
 
 def to_one_hot(y, n_dims=None):
@@ -27,17 +27,22 @@ def where(cond, x_1, x_2):
 
 
 # < YOUR CODE HERE >
-def define_network(state_dim, n_actions):
-    network = nn.Sequential(
-        nn.Linear(state_dim, 100),
-        nn.LeakyReLU(),
-        nn.Linear(100, 200),
-        nn.LeakyReLU(),
-        nn.Linear(200, 50),
-        nn.LeakyReLU(),
-        nn.Linear(50, n_actions)
-    )
-    return network
+class Model(nn.Module):
+    def __init__(self, n_states, n_actions):
+        super(Model, self).__init__()
+        self.fc1 = nn.Linear(n_states, n_states * 3)
+        self.fc2 = nn.Linear(n_states * 3, n_states * 2)
+        self.fc3 = nn.Linear(n_states * 2, int(n_states * 1.5))
+        self.fc_out1 = nn.Linear(int(n_states * 1.5), n_actions)
+        self.fc_out2 = nn.Linear(int(n_states * 1.5), n_states)
+
+    def forward(self, x):
+        x = F.leaky_relu(self.fc1(x))
+        x = F.leaky_relu(self.fc2(x))
+        x = F.leaky_relu(self.fc3(x))
+        o1 = self.fc_out1(x)
+        o2 = self.fc_out2(x)
+        return o1, o2
 
 
 # < YOUR CODE HERE >
@@ -48,7 +53,8 @@ def get_action(state, epsilon):
     recap: with probability = epsilon pick random action, else pick action with highest Q(s,a)
     """
     state = Variable(torch.FloatTensor(state))
-    q_values = agent(state).data.numpy()
+    q_values, _ = agent(state)
+    q_values = q_values.data.numpy()
 
     r = np.random.choice(2, p=[epsilon, 1-epsilon])
     if r == 1:
@@ -67,12 +73,12 @@ def compute_td_loss(states, actions, rewards, next_states, is_done, gamma=0.99, 
     is_done = Variable(torch.FloatTensor(is_done))  # shape: [batch_size]
 
     # get q-values for all actions in current states
-    predicted_qvalues = agent(states)  # < YOUR CODE HERE >
+    predicted_qvalues, predicted_next_states = agent(states)  # < YOUR CODE HERE >
     # select q-values for chosen actions
     predicted_qvalues_for_actions = torch.sum(
         predicted_qvalues.cpu() * to_one_hot(actions, n_actions), dim=1)
     # compute q-values for all actions in next states
-    predicted_next_qvalues = agent(next_states)  # < YOUR CODE HERE >
+    predicted_next_qvalues, _ = agent(next_states)  # < YOUR CODE HERE >
     # compute V*(next_states) using predicted next q-values
     next_state_values, _ = torch.max(predicted_next_qvalues, dim=1)
 
@@ -84,6 +90,7 @@ def compute_td_loss(states, actions, rewards, next_states, is_done, gamma=0.99, 
     target_qvalues_for_actions = where(is_done, rewards, target_qvalues_for_actions).cpu()
     # Mean Squared Error loss to minimize
     loss = torch.mean((predicted_qvalues_for_actions - target_qvalues_for_actions.detach()) ** 2)
+    loss_states = torch.norm(next_states - predicted_next_states, 2)
 
     if check_shapes:
         assert predicted_next_qvalues.data.dim() == 2, \
@@ -93,15 +100,28 @@ def compute_td_loss(states, actions, rewards, next_states, is_done, gamma=0.99, 
         assert target_qvalues_for_actions.data.dim() == 1, \
             'there is something wrong with target q-values, they must be a vector'
 
-    return loss
+    return loss + loss_states
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--train', dest='train', action='store_true', default=False)
 parser.add_argument('--no-eps', action='store_true', default=False)
+parser.add_argument('--even', action='store_true', default=False)
 args = parser.parse_args()
 
-BASE_EPSILON = lambda: 0.5 if args.train and not args.no_eps else 0
+def modulo2(value, even):
+    value = value % 2
+    if even:
+        return value == 0
+    else:
+        return value != 0
+
+def BASE_EPSILON():
+    if not args.train:
+        return 0
+    if args.no_eps:
+        return 0.1
+    return 0.5
 
 VERBOSE = True  # used for logging
 
@@ -112,16 +132,16 @@ gamecountscheduler=-1
 wins=0
 loses=0
 states, actions, rewards, dones, next_states = [], [], [], [], []
-gamma=0.98
+gamma=0.95
 lives,prev_lives=0,0
 prevCoords = ()
 commands = ('left', 'right', 'stop')
 epsilon = BASE_EPSILON()
-epsilon_decay = 0.98
+epsilon_decay = 0.97
 
 agentPath = os.path.abspath(os.path.join(os.path.dirname(__file__), "agent.pth"))
 agentLock = os.path.abspath(os.path.join(os.path.dirname(__file__), "agent.pth.lock"))
-agent = define_network(45, 3)
+agent = Model(45, n_actions)
 if os.path.isfile(agentPath):
     # load weights
     agent.load_state_dict(torch.load(agentPath))
@@ -146,17 +166,17 @@ while True:
             gamecount+=1
             gamecountscheduler += 1
             lives=dict["params"]["my_lives"]
-            prevCoords = ()
+            prevCoords = None
             if gamecount==0:
                 prev_lives=dict["params"]["my_lives"]
             else:
                 next_states.extend([states[len(states) - i - 1] for i in reversed(range(ticknum - 1))] + states[-1])
                 dones[-1] = True
-                if lives==prev_lives:  # not dead yet
-                    rewards[-1] += 100
+                if lives==prev_lives:  # won
+                    rewards[-1] = 200
                     wins+=1
                 else:
-                    rewards[-1] += -100
+                    rewards[-1] = -100
                     loses+=1
                 prev_lives=lives
                 if VERBOSE and gamecount%20==0:
@@ -172,7 +192,7 @@ while True:
                     FI.write("\nSum of ticks:")
                     FI.write(str(ticksum))
                     FI.write("\n")
-                if gamecount % 2 == 0 and args.train:
+                if args.train and modulo2(gamecount, args.even):
                     agent_lock = FileLock(agentLock)
                     with agent_lock:
                         # 1. read new agent weights
@@ -195,7 +215,6 @@ while True:
                     gamecount = 0
                     wins = 0
                     loses = 0
-                    epsilon = BASE_EPSILON()
             ticknum,numpy_2d_arrays = 0,[0]*9
             numpy_2d_arrays[dict["params"]["proto_car"]["external_id"] - 1] = 1
             numpy_2d_arrays[dict["params"]["proto_map"]["external_id"] + 2] = 1
@@ -221,7 +240,6 @@ while True:
                 for i in range(len(coords)):
                     speeds.append(coords[i] - prevCoords[i])
             prevCoords = coords
-
             ticknum+=1
             ticksum+=1
             state = np.array(\
@@ -235,10 +253,7 @@ while True:
             # update epsilon:
             if args.train:
                 epsilon = max(epsilon * epsilon_decay, 0.1)
-            FI.write(commands[choice])
-            FI.write("\n")
             print(json.dumps({"command": commands[choice]}))
-
     except EOFError:
         if args.train:
             # save weights
@@ -246,8 +261,6 @@ while True:
             with agent_lock:
                 torch.save(agent.state_dict(), agentPath)
         if VERBOSE:
-            FI.write("\n")
-            FI.write("BAD WOLF")
-            FI.write("\n")
+            FI.write('=' * 40 + 'End of Session\n')
             FI.close()
         exit(0)

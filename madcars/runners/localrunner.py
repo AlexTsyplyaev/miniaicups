@@ -7,6 +7,7 @@ import numpy as np
 import os
 import sys
 import argparse
+import platform
 
 parser = argparse.ArgumentParser(description='LocalRunner for MadCars')
 parser.add_argument('-f', '--fp', type=str, nargs='?',
@@ -29,14 +30,17 @@ if args.full:
         'IslandMap', 'IslandHoleMap']
     cars = cars = ['Buggy', 'Bus', 'SquareWheelsBuggy']
 
-games = [','.join(t) for t in product(maps, cars)]*args.games_num
+games = [','.join(t) for t in product(maps, cars)]*args.games_num * 2 + ['PillMap,Buggy']  # play at least games_num packs of games + 1
 cur_dir = os.path.dirname(__file__)
 rel_path = '../players'.split('/')
 python_path = os.path.abspath(os.path.join(cur_dir, *rel_path))
-python_interpreter = 'python{major}'.format(
-    major=sys.version_info.major)
+if 'Windows' == platform.system():
+    python_interpreter = 'python'
+else:
+    python_interpreter = 'python{major}'.format(
+        major=sys.version_info.major)
 fp = [python_interpreter, '-u', os.path.join(python_path, 'pytorch_main.py'),
-    '--train']
+    '--train', '--even']
 if args.fp is not None:
     fp = args.fp.split()
 sp = [python_interpreter, '-u', os.path.join(python_path, 'pytorch_main.py'),
@@ -46,10 +50,16 @@ if args.sp is not None:
 if args.no_eps:
     fp.append('--no-eps')
     sp.append('--no-eps')
+
+play_against_random = np.random.choice([False, True], p=[0.7, 0.3])
+if play_against_random:
+    sp = [python_interpreter, '-u', os.path.join(python_path, 'r.py')]
+
 fc = FileClient(fp, None)
 sc = FileClient(sp, None)
 game = None
 r = np.random.choice(2, p=[0.5, 0.5])
+print('Against random?', play_against_random)
 if r == 1:
     print('Usual session')
     game = Game([fc, sc], games, extended_save=False)
