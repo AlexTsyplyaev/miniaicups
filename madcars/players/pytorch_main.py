@@ -26,7 +26,6 @@ def where(cond, x_1, x_2):
     return (cond * x_1) + ((1-cond) * x_2)
 
 
-# < YOUR CODE HERE >
 class Model(nn.Module):
     def __init__(self, n_states, n_actions):
         super(Model, self).__init__()
@@ -45,7 +44,6 @@ class Model(nn.Module):
         return o1, o2
 
 
-# < YOUR CODE HERE >
 n_actions = 3
 def get_action(state, epsilon):
     """
@@ -63,7 +61,6 @@ def get_action(state, epsilon):
         return random.choice([0,1,2])
 
 
-# < YOUR CODE HERE >
 def compute_td_loss(states, actions, rewards, next_states, is_done, gamma=0.99, check_shapes=False):
     """ Compute td loss using torch operations only."""
     states = Variable(torch.FloatTensor(states))  # shape: [batch_size, state_size]
